@@ -14,4 +14,8 @@ typedef struct {
 int process_manager_start(void);
 const Worker *process_manager_workers(void);
 
+int process_manager_reap(void);
+int process_manager_init_signals(void);
+int process_manager_take_child_event(void);
+
 #endif
