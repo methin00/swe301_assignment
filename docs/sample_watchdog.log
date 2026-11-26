@@ -1,0 +1,11 @@
+2026-11-26 11:19:08 | worker_started | pid=706 | running
+2026-11-26 11:19:08 | worker_started | pid=707 | running
+2026-11-26 11:19:08 | status | pid=706 | running
+2026-11-26 11:19:08 | status | pid=707 | running
+2026-11-26 11:19:08 | shutdown | pid=704 | workers reaped
+2026-11-26 11:19:08 | worker_started | pid=726 | running
+2026-11-26 11:19:08 | worker_started | pid=727 | running
+2026-11-26 11:19:08 | shutdown | pid=724 | workers reaped
+2026-11-26 11:20:01 | worker_started | pid=746 | running
+2026-11-26 11:20:01 | worker_started | pid=747 | running
+2026-11-26 11:20:06 | shutdown | pid=745 | workers reaped
