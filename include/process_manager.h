@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #define WORKER_COUNT 2
+#define MAX_RESTARTS 3
 
 typedef struct {
     pid_t pid;
@@ -17,5 +18,7 @@ const Worker *process_manager_workers(void);
 int process_manager_reap(void);
 int process_manager_init_signals(void);
 int process_manager_take_child_event(void);
+
+void process_manager_disable_restart(void);
 
 #endif
