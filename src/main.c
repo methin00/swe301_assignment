@@ -31,6 +31,10 @@ static int run_loop(const sigset_t *wait_mask)
         if (child_event == -1 || (child_event && process_manager_reap() == -1))
             return -1;
 
+        int periodic_event = process_manager_take_periodic_event();
+        if (periodic_event == -1 || (periodic_event && process_manager_periodic_check() == -1))
+            return -1;
+
         int report = take_report_request();
         if (report == -1 || (report && log_running_workers("status") == -1))
             return -1;
@@ -81,6 +85,7 @@ int main(void)
     sigset_t managed, wait_mask;
 
     if (sigemptyset(&managed) == -1 ||
+        sigaddset(&managed, SIGALRM) == -1 ||
         sigaddset(&managed, SIGCHLD) == -1 ||
         sigaddset(&managed, SIGINT) == -1 ||
         sigaddset(&managed, SIGTERM) == -1 ||
@@ -96,7 +101,8 @@ int main(void)
     }
 
     /* Unblock the managed signals only while waiting for an event. */
-    if (sigdelset(&wait_mask, SIGCHLD) == -1 ||
+    if (sigdelset(&wait_mask, SIGALRM) == -1 ||
+        sigdelset(&wait_mask, SIGCHLD) == -1 ||
         sigdelset(&wait_mask, SIGINT) == -1 ||
         sigdelset(&wait_mask, SIGTERM) == -1 ||
         sigdelset(&wait_mask, SIGUSR1) == -1) {
@@ -111,11 +117,19 @@ int main(void)
 
     fprintf(stderr, "Watchdog started (PID %ld)\n", (long)getpid());
     int result = EXIT_SUCCESS;
-    if (log_running_workers("worker_started") == -1 || run_loop(&wait_mask) == -1) {
+    if (process_manager_start_timer() == -1) {
+        perror("start timer");
+        result = EXIT_FAILURE;
+    } else if (log_running_workers("worker_started") == -1 || run_loop(&wait_mask) == -1) {
         perror("watchdog");
         result = EXIT_FAILURE;
     }
 
+    process_manager_disable_restart();
+    if (process_manager_stop_timer() == -1) {
+        perror("stop timer");
+        result = EXIT_FAILURE;
+    }
     if (stop_workers() == -1) {
         perror("stop workers");
         return EXIT_FAILURE;
