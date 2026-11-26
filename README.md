@@ -1,55 +1,49 @@
-# Watchdog ve Worker
+# Watchdog and Worker
 
-## Derleme
+## Build
 
-Repo kökünde çalıştır:
+From the repository root on Linux, run:
 
-```bash
+```sh
 make
 ```
 
-Bu komut `watchdog` ve `worker` programlarını derler.
+This builds two executables, `watchdog` and `worker`.
 
-## Çalıştırma
+## Run
 
-```bash
+```sh
 ./watchdog
 ```
 
-Watchdog iki worker başlatır. Log dosyası, komutu çalıştırdığın dizindeki `watchdog.log` dosyasıdır.
+The watchdog starts two worker processes, prints its own PID, and writes events to `watchdog.log` in the current directory.
 
-## Sinyaller
+## Signals
 
-Watchdog çalışırken başka bir terminalde, başlangıçta gösterilen PID’yi kullan:
+In a second terminal, replace `<WATCHDOG_PID>` with the PID printed at startup. To log the PID and state of each running worker, send:
 
-```bash
+```sh
 kill -USR1 <WATCHDOG_PID>
 ```
 
-Bu komut çalışan worker’ların durumunu log dosyasına kaydeder.
+To shut down the system, send `SIGTERM` to the watchdog:
 
-Yalnızca watchdog’a SIGTERM göndermek için:
-
-```bash
+```sh
 kill -TERM <WATCHDOG_PID>
 ```
 
-Watchdog kapanırken worker süreçlerini durdurup toplar.
+You can also press Ctrl+C in the terminal where the watchdog is running in the foreground. The workers ignore the terminal's `SIGINT`. The watchdog sends them `SIGTERM` and waits for them to exit.
 
-Ön planda çalışan watchdog’u `Ctrl+C` ile de durdurabilirsin. Worker’lar terminalden gelen SIGINT’i yok sayar. Watchdog kapanışı başlatır, worker’lara SIGTERM gönderir ve sonlanmalarını bekler.
+## Run the tests
 
-## Testleri çalıştırma
-
-```bash
+```sh
 ./tests/test_scenarios.sh
 ```
 
-Test betiği iki worker’ın başlamasını, SIGUSR1 durum raporunu ve watchdog’a gönderilen SIGTERM/SIGINT sonrasında worker’ların kapanmasını kontrol eder. Örnek log `docs/sample_watchdog.log` dosyasındadır.
+This script checks that two workers start, that the `SIGUSR1` report contains their PIDs, and that the watchdog reaps both workers on `SIGTERM` or `SIGINT`. See [the sample log](docs/sample_watchdog.log) for example output.
 
-Ek senaryolar ve restart sınırı için:
-
-```bash
+```sh
 ./tests/test_advanced_scenarios.sh
 ```
 
-Bu betik kod 0 ile normal çıkışı, kod 7 ile hatalı çıkışı, her worker için üç restart sınırını, SIGKILL sonrası restartı ve beş saniyelik periyodik kontrolü sınar. Gerçek Ctrl+C denemesinde watchdog kapandı ve iki worker SIGTERM (sinyal 15) ile sonlandı.
+This script checks normal exit (code 0), error exit (code 7), the limit of three restarts per worker, recovery after `SIGKILL`, and the five-second periodic check. In a separate foreground test, pressing Ctrl+C shut down the watchdog and both workers exited on `SIGTERM` (signal 15). See [the test results](docs/test_results.md).
