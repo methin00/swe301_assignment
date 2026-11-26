@@ -36,7 +36,7 @@ kill -TERM <WATCHDOG_PID>
 
 Watchdog kapanırken worker süreçlerini durdurup toplar.
 
-Ön planda çalışan watchdog’u `Ctrl+C` ile de durdurabilirsin. Denemede Ctrl+C, watchdog ile birlikte worker’lara da SIGINT gönderdi; worker’lar sinyal 2 ile sonlandı.
+Ön planda çalışan watchdog’u `Ctrl+C` ile de durdurabilirsin. Worker’lar terminalden gelen SIGINT’i yok sayar. Watchdog kapanışı başlatır, worker’lara SIGTERM gönderir ve sonlanmalarını bekler.
 
 ## Testleri çalıştırma
 
