@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <errno.h>
 
 static Worker workers[WORKER_COUNT];
@@ -15,6 +16,7 @@ static int restart_enabled = 1;
 static const char log_path[] = "watchdog.log";
 
 static volatile sig_atomic_t child_event_pending;
+static volatile sig_atomic_t periodic_event_pending;
 
 static void log_event(const char *event, pid_t pid,
                       const char *details)
@@ -42,7 +44,8 @@ static int start_worker(int index)
 
         action.sa_handler = SIG_DFL;
 
-        if (sigaction(SIGTERM, &action, NULL) == -1)
+        if (sigaction(SIGTERM, &action, NULL) == -1 ||
+            sigaction(SIGALRM, &action, NULL) == -1)
             _exit(126);
 
         if (sigemptyset(&mask) == -1 ||
@@ -128,6 +131,9 @@ static void restart_worker(int index)
                  MAX_RESTARTS);
 
         log_event("restart_attempt", old_pid, details);
+
+        if (!can_restart())
+            return;
 
         if (start_worker(index) == 0) {
             log_event("worker_restarted",
@@ -227,6 +233,12 @@ static void handle_child_signal(int signo)
     child_event_pending = 1;
 }
 
+static void handle_periodic_signal(int signo)
+{
+    (void)signo;
+    periodic_event_pending = 1;
+}
+
 int process_manager_init_signals(void)
 {
     struct sigaction action = {0};
@@ -237,7 +249,13 @@ int process_manager_init_signals(void)
     if (sigemptyset(&action.sa_mask) == -1)
         return -1;
 
-    return sigaction(SIGCHLD, &action, NULL);
+    if (sigaction(SIGCHLD, &action, NULL) == -1)
+        return -1;
+
+    action.sa_handler = handle_periodic_signal;
+    action.sa_flags = 0;
+
+    return sigaction(SIGALRM, &action, NULL);
 }
 
 int process_manager_take_child_event(void)
@@ -257,4 +275,63 @@ int process_manager_take_child_event(void)
         return -1;
 
     return pending;
+}
+
+int process_manager_start_timer(void)
+{
+    struct itimerval timer = {0};
+
+    timer.it_value.tv_sec = CHECK_INTERVAL;
+    timer.it_interval.tv_sec = CHECK_INTERVAL;
+
+    return setitimer(ITIMER_REAL, &timer, NULL);
+}
+
+int process_manager_stop_timer(void)
+{
+    struct itimerval timer = {0};
+
+    return setitimer(ITIMER_REAL, &timer, NULL);
+}
+
+int process_manager_take_periodic_event(void)
+{
+    sigset_t blocked, previous;
+    int pending;
+
+    if (sigemptyset(&blocked) == -1 ||
+        sigaddset(&blocked, SIGALRM) == -1 ||
+        sigprocmask(SIG_BLOCK, &blocked, &previous) == -1)
+        return -1;
+
+    pending = periodic_event_pending;
+    periodic_event_pending = 0;
+
+    if (sigprocmask(SIG_SETMASK, &previous, NULL) == -1)
+        return -1;
+
+    return pending;
+}
+
+int process_manager_periodic_check(void)
+{
+    if (process_manager_reap() == -1)
+        return -1;
+
+    for (int i = 0; i < WORKER_COUNT; ++i) {
+        char details[128];
+
+        snprintf(details, sizeof(details),
+                 "Worker %d: %s, restarts=%u/%d",
+                 i + 1,
+                 workers[i].running ? "running" : "stopped",
+                 workers[i].restart_count,
+                 MAX_RESTARTS);
+
+        if (logger_log_event(log_path, "periodic_check",
+                             workers[i].pid, details) == -1)
+            return -1;
+    }
+
+    return 0;
 }
