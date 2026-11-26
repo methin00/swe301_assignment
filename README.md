@@ -46,4 +46,10 @@ Watchdog kapanırken worker süreçlerini durdurup toplar.
 
 Test betiği iki worker’ın başlamasını, SIGUSR1 durum raporunu ve watchdog’a gönderilen SIGTERM/SIGINT sonrasında worker’ların kapanmasını kontrol eder. Örnek log `docs/sample_watchdog.log` dosyasındadır.
 
-Normal çıkış, beklenmedik çıkış ve üç yeniden başlatma sonrasındaki dördüncü kayıp senaryoları henüz test edilmedi.
+Ek senaryolar ve restart sınırı için:
+
+```bash
+./tests/test_advanced_scenarios.sh
+```
+
+Bu betik kod 0 ile normal çıkışı, kod 7 ile hatalı çıkışı, her worker için üç restart sınırını, SIGKILL sonrası restartı ve beş saniyelik periyodik kontrolü sınar. Gerçek Ctrl+C denemesinde watchdog kapandı ve iki worker SIGTERM (sinyal 15) ile sonlandı.

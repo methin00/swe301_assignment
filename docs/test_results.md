@@ -18,8 +18,15 @@ Sonuçlar:
 
 ## Klavyeden Ctrl+C denemesi
 
-Watchdog ön planda çalışırken Ctrl+C ile durduruldu. Watchdog'un PID'si 745, worker PID'leri 746 ve 747 idi. Terminal çıktısında iki worker'ın da sinyal 2 (SIGINT) ile sonlandığı görüldü.
+İlk denemede worker’lar SIGINT (sinyal 2) ile sonlandı. Ana entegrasyon sonrası Ctrl+C tekrar test edildi: watchdog PID 1537 kapandı; worker PID’leri 1538 ve 1539 SIGTERM (sinyal 15) ile sonlandı.
 
-## Henüz test edilmeyen senaryolar
 
-Normal çıkış, beklenmedik çıkış ve üç yeniden başlatma sonrasındaki dördüncü worker kaybında yeni worker açılmaması henüz test edilmedi.
+## Ana entegrasyon sonrası gelişmiş testler
+
+Çalıştırılan komut: `./tests/test_advanced_scenarios.sh`
+
+- Kod 0 ile çıkan iki worker restart edilmedi.
+- Kod 7 ile çıkan worker’lar üçer kez restart edildi. Her birinin dördüncü kaybında `restart_limit` kaydı oluştu; yeni worker açılmadı.
+- 5 saniyelik periyodik kontrolde iki worker da `stopped`, restart sayısı `3/3` olarak loglandı.
+- SIGKILL ile beklenmedik sonlanan worker için `worker_signal`, `restart_attempt` ve `worker_restarted` kayıtları oluştu.
+- Betik `Tüm gelişmiş test senaryoları başarılı.` çıktısını verdi.
